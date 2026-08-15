@@ -60,6 +60,18 @@ end
     @test psp.r2_projs[1][1][1] ≈ psp.rgrid[1] * -6.2444638349035e-10
 end
 
+@testitem "Check reading BLPS Al UPF with empty NLCC and dummy projector" tags=[:psp] begin
+  using DFTK
+  using DFTK: has_core_density
+
+  psp = load_psp(joinpath(@__DIR__, "pseudos", "al.blps.lda.upf"))
+
+  @test !has_core_density(psp)
+  @test psp.r2_ρcore == zero(psp.rgrid)
+  @test length(psp.r2_projs[1][1]) == 2
+  @test all(iszero, psp.r2_projs[1][1])
+end
+
 @testitem "Real potentials are consistent with HGH" tags=[:psp] setup=[mPspUpf] begin
     using DFTK: eval_psp_local_real
 

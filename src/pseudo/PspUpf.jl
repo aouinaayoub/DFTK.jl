@@ -129,7 +129,10 @@ function PspUpf(pseudo::UpfFile; identifier, rcut=nothing)
         betas_l = filter(beta -> beta.angular_momentum == l, pseudo.nonlocal.betas)
         map(betas_l) do beta_li
             r_beta_ha = beta_li.beta[1:beta_li.cutoff_radius_index] ./ 2  # Ry -> Ha
-            rgrid[1:length(r_beta_ha)] .* r_beta_ha  # rβ -> r²β
+            proj      = rgrid[1:length(r_beta_ha)] .* r_beta_ha  # rβ -> r²β
+            length(proj) >= 2 || all(iszero, proj) || 
+                 error("UPF projector has fewer than two points and is not zero")
+            [proj; zeros(eltype(proj), max(0, 2 - length(proj)))]
         end
     end
     h = map(0:lmax) do l
@@ -153,9 +156,11 @@ function PspUpf(pseudo::UpfFile; identifier, rcut=nothing)
         end
     end
 
-    r2_ρion = pseudo.rhoatom ./ (4π)
-    r2_ρcore = rgrid .^ 2 .* (@something pseudo.nlcc   zeros(length(rgrid)))
-    r2_τcore = rgrid .^ 2 .* (@something pseudo.taumod zeros(length(rgrid)))
+    r2_ρion  = pseudo.rhoatom ./ (4π)
+    nlcc     = @something pseudo.nlcc Float64[]
+    r2_ρcore = isempty(nlcc) ? zero(rgrid) : rgrid .^ 2 .* nlcc
+    taumod   = @something pseudo.taumod Float64[]
+    r2_τcore = isempty(taumod) ? zero(rgrid) : rgrid .^ 2 .* taumod
 
     vloc_interp = linear_interpolation((rgrid,), vloc)
     r2_projs_interp = map(r2_projs) do r2_projs_l
